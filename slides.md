@@ -3,7 +3,7 @@
 theme: dracula
 # random image from a curated Unsplash collection by Anthony
 # like them? see https://unsplash.com/collections/94734566/slidev
-background: https://cover.sli.dev
+# background: https://cover.sli.dev
 # some information about your slides (markdown enabled)
 title: Diffsol, a crate for solving differential equations
 info: |
@@ -64,7 +64,10 @@ level: 2
 Diffsol is a library for solving ordinary differential equations (ODEs) or semi-explicit differential algebraic equations (DAEs) in Rust. It can solve equations in the following form:
 
 $$
-M \frac{dy}{dt} = f(t, y, p)
+\begin{align*}
+M \frac{dy}{dt} &= f(t, y, p) \\
+y(0) &= y_0(p) \\
+\end{align*}
 $$
 
 where 
@@ -92,13 +95,12 @@ level: 3
 
 **Solver Options**:
 1. Adaptive step-size error control with dense output
-1. Event handling
-1. Numerical quadrature
+1. High-level "solve" API or manual time-stepping, event handling, etc.
+1. Numerical quadrature of an optional output function $g(t, y, p)$
 1. Forwards and adjoint sensitivity analysis
 
 
 ---
-transition: slide-up
 level: 3
 ---
 
@@ -129,11 +131,17 @@ F { -a * u }
 
 
 ---
-transition: slide-up
 level: 3
 ---
 
-# Example - DiffSL DSL
+# Example: The logistic growth model
+
+$$
+\begin{align*}
+\frac{dr}{dt} &= r \cdot u \cdot \left(1 - \frac{u}{k}\right) \\
+u(0) &= 0.1 \\
+\end{align*}
+$$
 
 Using DiffSL DSL:
 
@@ -141,16 +149,12 @@ Using DiffSL DSL:
 let problem = OdeBuilder::<M>::new()
     .build_from_diffsl::<CG>(
         "
-    a { 2.0/3.0 } b { 4.0/3.0 } c { 1.0 } d { 1.0 }
-    u_i {
-        y1 = 1,
-        y2 = 1,
-    }
-    F_i {
-        a * y1 - b * y1 * y2,
-        c * y1 * y2 - d * y2,
-    }
-",
+        in = [r, k]
+        r { 1.0 }
+        k { 1.0 }
+        u { 0.1 }
+        F { r * u * (1.0 - u / k) }
+        ",
     )
     .unwrap();
 let mut solver = problem.bdf::<LS>().unwrap();
@@ -158,17 +162,27 @@ let (ys, ts) = solver.solve(40.0).unwrap();
 ```
 
 ---
-level: 3
+level: 4
 ---
 
-# Example - Lotka-Volterra equations - Rust closures
+# Example: The logistic growth model
+
+$$
+\begin{align*}
+\frac{dr}{dt} &= r \cdot u \cdot \left(1 - \frac{u}{k}\right) \\
+u(0) &= 0.1 \\
+\end{align*}
+$$
 
 Using Rust closures:
 
 ```rust
 let problem = OdeBuilder::<M>::new()
     .p(vec![1.0, 10.0])
-    .rhs(|x, p, _t, y| y[0] = p[0] * x[0] * (1.0 - x[0] / p[1]))
+    .rhs_implicit(
+        |x, p, _t, y| y[0] = p[0] * x[0] * (1.0 - x[0] / p[1]),
+        |x, p, _t, v, y| y[0] = p[0] * v[0] * (1.0 - 2.0 * x[0] / p[1]),
+    )
     .init(|_p, _t, y| y.fill(0.1), 1)
     .build()
     .unwrap()
@@ -181,56 +195,75 @@ let (ys, ts) = solver.solve(40.0).unwrap();
 level: 2
 ---
 
-# Diffsol Traits
+# Diffsol architecture (traits)
 
-Traits allow for easily swapping out and combining different underlying vector, matrix and solvers.
+Traits allow for easily swapping out and combining different vector, matrix and solvers concrete types.
 
-1. Linear algebra traits
-   - `Vector` trait for defining vector operations on dense vectors
-   - `Matrix` trait for defining matrix operations on dense and sparse matrices 
-      - `DenseMatrix` sub-trait for defining dense matrix operations
-1. Operator traits (associated types for the vector types they operate on)
-   - `NonLinearOp` for a non-linear operation wrt $x$ (e.g. $f(x, p, t)$), 
-      - `NonLinearOpJacobian` for the Jacobian $\frac{\partial f}{\partial x} v$
-      - `NonLinearOpAdjoint` for the adjoint Jacobian $\frac{\partial f}{\partial x}^T V$
-      - `NonLinearOpSens` $\frac{\partial f}{\partial p} V$
-      - `NonLinearOpSensAdjoint` $\frac{\partial f}{\partial p}^T V$
-   - `LinearOp` for a linear operation wrt $x$ (e.g. $Ax + b$)
-   - `ConstantOp` for a constant operation wrt $x$ (e.g. $b$)
-
----
-
-# Solver traits
-
-1. `LinearSolver` for solving linear systems $Ax = b$
-2. `NonLinearSolver` for solving non-linear systems $f(x, t) = 0$
-
-Example, a Newton non-linear solver:
-
-```rust
-pub struct NewtonNonlinearSolver<M: Matrix, Ls: LinearSolver<M>> {
-    linear_solver: Ls,
-}
-
-impl<M: Matrix, Ls: LinearSolver<M>> NonLinearSolver<M> for NewtonNonlinearSolver<M, Ls> {
-  fn solve_in_place<C: NonLinearOp<V = M::V, T = M::T, M = M>>(
-        &mut self,
-        op: &C,
-        xn: &mut M::V,
-        t: M::T,
-        error_y: &M::V,
-        convergence: &mut Convergence<M::V>,
-    ) -> Result<(), DiffsolError> {
-    // ...
-  }
-  // a few other methods to allow for efficient solving on a time-series (i.e. caching the Jacobian)
-}
+```mermaid {theme: 'neutral', scale: 1.5}
+block-beta
+  columns 1
+  id1 
+  block
+    id2 id3 
+  end
+  block
+    id4 id5
+  end
+  id1("Linear Algebra Traits (Scalar, Vector, Matrix)") 
+  id2("Operator Traits: f(x)") 
+  id3("Solver Traits") 
+  id4("ODE Equations Traits: dy/dt = f(x)") 
+  id5("ODE Solver Trait")
+  style id1 fill:#f9f,stroke:#333,stroke-width:2px,font-size:1px
+  style id2 fill:#bbf,stroke:#333,stroke-width:2px
+  style id3 fill:#bfb,stroke:#333,stroke-width:2px
+  style id4 fill:#ffb,stroke:#333,stroke-width:2px
+  style id5 fill:#fbb,stroke:#333,stroke-width:2px
 ```
 
 ---
 level: 3
 ---
-# Ode Equations Trait
+
+# Linear algebra traits
+- [`Vector`](https://docs.rs/diffsol/latest/diffsol/vector/trait.Vector.html)
+    - defines vector operations on dense vectors
+    - e.g. construction, addition, element-wise multiplication, AXPY, gather, scatter etc.
+- [`Matrix`](https://docs.rs/diffsol/latest/diffsol/matrix/trait.Matrix.html) 
+    - defines matrix operations on dense and sparse matrices 
+    - sparsity pattern as an associated type
+    - e.g. construction, addition, GEMV, etc.
+- [`DenseMatrix`](https://docs.rs/diffsol/latest/diffsol/matrix/trait.DenseMatrix.html)
+    - sub-trait for defining dense matrix operations on column-major matrices
+    - column slicing and mutation
+      
+
+---
+level: 3
+---
+
+# Operator and solver traits 
+
+*Associated types define the vector/matrix types they operate on...*
+
+Operator traits:
+   - [`NonLinearOp`](https://docs.rs/diffsol/latest/diffsol/op/nonlinear_op/trait.NonLinearOp.html) for a non-linear operation: $f(x, t)$, 
+      - [`NonLinearOpJacobian`](https://docs.rs/diffsol/latest/diffsol/op/nonlinear_op/trait.NonLinearOpJacobian.html) for the Jacobian $\frac{\partial f}{\partial x} v$
+      - [`NonLinearOpAdjoint`](https://docs.rs/diffsol/latest/diffsol/op/nonlinear_op/trait.NonLinearOpAdjoint.html) for the adjoint Jacobian $\frac{\partial f}{\partial x}^T V$
+      - [`NonLinearOpSens`](https://docs.rs/diffsol/latest/diffsol/op/nonlinear_op/trait.NonLinearOpSens.html) $\frac{\partial f}{\partial p} V$
+      - [`NonLinearOpSensAdjoint`](https://docs.rs/diffsol/latest/diffsol/op/nonlinear_op/trait.NonLinearOpSensAdjoint.html) $\frac{\partial f}{\partial p}^T V$
+   - [`LinearOp`](https://docs.rs/diffsol/latest/diffsol/op/linear_op/trait.LinearOp.html) for a linear operation wrt $x$ (e.g. $Ax + b$)
+   - [`ConstantOp`](https://docs.rs/diffsol/latest/diffsol/op/constant_op/trait.ConstantOp.html) for a constant operation wrt $x$ (e.g. $b$)
+
+Solver traits:
+   - [`LinearSolver`](https://docs.rs/diffsol/latest/diffsol/linear_solver/trait.LinearSolver.html) for solving linear systems $Ax = b$
+   - [`NonLinearSolver`](https://docs.rs/diffsol/latest/diffsol/nonlinear_solver/trait.NonLinearSolver.html) for solving non-linear systems $f(x, t) = 0$
+
+---
+level: 3
+---
+
+# ODE equations trait
 
 The set of ODE equations to be solved. 
 
@@ -258,7 +291,7 @@ pub trait OdeEquations: for<'a> OdeEquationsRef<'a> {
 ---
 level: 3
 ---
-# Different classes of ODE equations
+# ODE equations sub-traits
 
 Different solvers require different information about the equations to be solved.
 
@@ -287,7 +320,7 @@ Individual solvers can then use these traits as bounds for the equations they so
 level: 3
 ---
 
-# The `OdeSolverMethod` trait
+# The ODE solver method trait
 
 This is the public interface for all the solver methods.
 
@@ -316,43 +349,13 @@ where
 }
 ```
 
-
----
-level: 3
----
-
-# It's nonlinear functions all the way down....
-
-*Implicit ODE solvers are a series of nonlinear solves with good initial guesses...*
-
-e.g. BDF solvers discretise the ODE equations to give an non-linear equations of the form:
-
-$$
-M (y - y_0 + \psi) - c f(y) = 0
-$$
-
-So we implement the `NonLinearOp` and `NonLinearOpJacobian` traits for this operator:
-
-```rust
-pub struct BdfCallable<Eqn: OdeEquationsImplicit> {...}
-impl<Eqn: OdeEquationsImplicit> NonLinearOp for BdfCallable<Eqn> {
-  fn call_inplace(&self, x: &Eqn::V, t: Eqn::T, y: &mut Eqn::V) { ... }
-}
-impl<Eqn: OdeEquationsImplicit> NonLinearOpJacobian for BdfCallable<Eqn> {
-  fn jac_mul_inplace(&self, x: &Eqn::V, t: Eqn::T, v: &Eqn::V, y: &mut Eqn::V) { ... }
-}
-
-```
-
-Can then use `BdfCallable` in conjunction with a `NonlinearSolver` to solve the BDF equations at each time step.
-
 ---
 level: 3
 ---
 
 # Closing thoughts
 
-## Advantages of the design
+## Advantages
 
 - **Flexibility**: The use of traits allows for easy swapping of different vector, matrix and solver combinations.
 - **Modularity**: Can reuse solvers, matrix operations, equations, etc. across different but related problems.
@@ -361,7 +364,7 @@ level: 3
 ## Disadvantages
 
 - **Complexity**: Proliferation of generic types and complex interlocking trait bounds.
-- **Repetition**: Forced to repeat complex trait bounds across multiple impls, lack of default associated types.
+- **Repetition**: Forced to repeat complex trait bounds across multiple impls, lack of default associated types (on its way https://github.com/rust-lang/rust/issues/29661)
 - **GATs with lifetimes**: Difficult to use, see `OdeEquationsRef` and `OdeEquations` traits.
 - **Poor linting**: Rust-analyzer slow to lint code, very large memory usage and requires constant restarts.
 
