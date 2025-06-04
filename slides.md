@@ -94,6 +94,8 @@ level: 3
 1. A variable order Explict Runge-Kutta (ERK) solver (TSIT45 tableau)
 
 **Solver Options**:
+
+1. Matrices, vectors and solvers from the `nalgebra` or `faer` crates
 1. Adaptive step-size error control with dense output
 1. High-level "solve" API or manual time-stepping, event handling, etc.
 1. Numerical quadrature of an optional output function $g(t, y, p)$
@@ -146,7 +148,11 @@ $$
 Using DiffSL DSL:
 
 ```rust
-let problem = OdeBuilder::<M>::new()
+type M = diffsol::NalgebraMat<f64>;
+type LS = diffsol::NalgebraLU
+
+let problem = diffsol::OdeBuilder::<M>::new()
+    .p(vec![1.0, 10.0])
     .build_from_diffsl::<CG>(
         "
         in = [r, k]
@@ -177,7 +183,10 @@ $$
 Using Rust closures:
 
 ```rust
-let problem = OdeBuilder::<M>::new()
+type M = diffsol::NalgebraMat<f64>;
+type LS = diffsol::NalgebraLU
+
+let problem = diffsol::OdeBuilder::<M>::new()
     .p(vec![1.0, 10.0])
     .rhs_implicit(
         |x, p, _t, y| y[0] = p[0] * x[0] * (1.0 - x[0] / p[1]),
@@ -226,17 +235,20 @@ level: 3
 ---
 
 # Linear algebra traits
+
 - [`Vector`](https://docs.rs/diffsol/latest/diffsol/vector/trait.Vector.html)
-    - defines vector operations on dense vectors
-    - e.g. construction, addition, element-wise multiplication, AXPY, gather, scatter etc.
-- [`Matrix`](https://docs.rs/diffsol/latest/diffsol/matrix/trait.Matrix.html) 
-    - defines matrix operations on dense and sparse matrices 
-    - sparsity pattern as an associated type
-    - e.g. construction, addition, GEMV, etc.
+  - defines vector operations on dense vectors
+  - e.g. construction, addition, element-wise multiplication, AXPY, gather, scatter etc.
+- [`Matrix`](https://docs.rs/diffsol/latest/diffsol/matrix/trait.Matrix.html)
+  - defines matrix operations on dense and sparse matrices 
+  - sparsity pattern as an associated type
+  - e.g. construction, addition, GEMV, etc.
 - [`DenseMatrix`](https://docs.rs/diffsol/latest/diffsol/matrix/trait.DenseMatrix.html)
-    - sub-trait for defining dense matrix operations on column-major matrices
-    - column slicing and mutation
-      
+  - sub-trait for defining dense matrix operations on column-major matrices
+  - column slicing and mutation
+
+Diffsol provides implementations for vectors, sparse and dense matrices using the `nalgebra` and `faer` crates.
+
 
 ---
 level: 3
@@ -247,17 +259,20 @@ level: 3
 *Associated types define the vector/matrix types they operate on...*
 
 Operator traits:
-   - [`NonLinearOp`](https://docs.rs/diffsol/latest/diffsol/op/nonlinear_op/trait.NonLinearOp.html) for a non-linear operation: $f(x, t)$, 
-      - [`NonLinearOpJacobian`](https://docs.rs/diffsol/latest/diffsol/op/nonlinear_op/trait.NonLinearOpJacobian.html) for the Jacobian $\frac{\partial f}{\partial x} v$
-      - [`NonLinearOpAdjoint`](https://docs.rs/diffsol/latest/diffsol/op/nonlinear_op/trait.NonLinearOpAdjoint.html) for the adjoint Jacobian $\frac{\partial f}{\partial x}^T V$
-      - [`NonLinearOpSens`](https://docs.rs/diffsol/latest/diffsol/op/nonlinear_op/trait.NonLinearOpSens.html) $\frac{\partial f}{\partial p} V$
-      - [`NonLinearOpSensAdjoint`](https://docs.rs/diffsol/latest/diffsol/op/nonlinear_op/trait.NonLinearOpSensAdjoint.html) $\frac{\partial f}{\partial p}^T V$
-   - [`LinearOp`](https://docs.rs/diffsol/latest/diffsol/op/linear_op/trait.LinearOp.html) for a linear operation wrt $x$ (e.g. $Ax + b$)
-   - [`ConstantOp`](https://docs.rs/diffsol/latest/diffsol/op/constant_op/trait.ConstantOp.html) for a constant operation wrt $x$ (e.g. $b$)
+
+- [`NonLinearOp`](https://docs.rs/diffsol/latest/diffsol/op/nonlinear_op/trait.NonLinearOp.html) for a non-linear operation: $f(x, t)$, 
+  - [`NonLinearOpJacobian`](https://docs.rs/diffsol/latest/diffsol/op/nonlinear_op/trait.NonLinearOpJacobian.html) for the Jacobian $\frac{\partial f}{\partial x} v$
+  - [`NonLinearOpAdjoint`](https://docs.rs/diffsol/latest/diffsol/op/nonlinear_op/trait.NonLinearOpAdjoint.html) for the adjoint Jacobian $\frac{\partial f}{\partial x}^T V$
+  - [`NonLinearOpSens`](https://docs.rs/diffsol/latest/diffsol/op/nonlinear_op/trait.NonLinearOpSens.html) $\frac{\partial f}{\partial p} V$
+  - [`NonLinearOpSensAdjoint`](https://docs.rs/diffsol/latest/diffsol/op/nonlinear_op/trait.NonLinearOpSensAdjoint.html) $\frac{\partial f}{\partial p}^T V$
+- [`LinearOp`](https://docs.rs/diffsol/latest/diffsol/op/linear_op/trait.LinearOp.html) for a linear operation wrt $x$ (e.g. $Ax + b$)
+- [`ConstantOp`](https://docs.rs/diffsol/latest/diffsol/op/constant_op/trait.ConstantOp.html) for a constant operation wrt $x$ (e.g. $b$)
 
 Solver traits:
-   - [`LinearSolver`](https://docs.rs/diffsol/latest/diffsol/linear_solver/trait.LinearSolver.html) for solving linear systems $Ax = b$
-   - [`NonLinearSolver`](https://docs.rs/diffsol/latest/diffsol/nonlinear_solver/trait.NonLinearSolver.html) for solving non-linear systems $f(x, t) = 0$
+
+- [`LinearSolver`](https://docs.rs/diffsol/latest/diffsol/linear_solver/trait.LinearSolver.html) for solving linear systems $Ax = b$
+- [`NonLinearSolver`](https://docs.rs/diffsol/latest/diffsol/nonlinear_solver/trait.NonLinearSolver.html) for solving non-linear systems $f(x, t) = 0$
+- Diffsol provides implementations for `faer` dense and sparse LU, `nalgebra` dense LU, and `suitesparse` KLU solvers.
 
 ---
 level: 3
@@ -265,7 +280,7 @@ level: 3
 
 # ODE equations trait
 
-The set of ODE equations to be solved. 
+The set of ODE equations to be solved.
 
 Allows users to define their own equation structs and share data between them.
 
@@ -291,6 +306,7 @@ pub trait OdeEquations: for<'a> OdeEquationsRef<'a> {
 ---
 level: 3
 ---
+
 # ODE equations sub-traits
 
 Different solvers require different information about the equations to be solved.
