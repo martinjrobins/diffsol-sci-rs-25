@@ -261,18 +261,17 @@ level: 3
 Operator traits:
 
 - [`NonLinearOp`](https://docs.rs/diffsol/latest/diffsol/op/nonlinear_op/trait.NonLinearOp.html) for a non-linear operation: $f(x, t)$, 
-  - [`NonLinearOpJacobian`](https://docs.rs/diffsol/latest/diffsol/op/nonlinear_op/trait.NonLinearOpJacobian.html) for the Jacobian $\frac{\partial f}{\partial x} v$
-  - [`NonLinearOpAdjoint`](https://docs.rs/diffsol/latest/diffsol/op/nonlinear_op/trait.NonLinearOpAdjoint.html) for the adjoint Jacobian $\frac{\partial f}{\partial x}^T V$
-  - [`NonLinearOpSens`](https://docs.rs/diffsol/latest/diffsol/op/nonlinear_op/trait.NonLinearOpSens.html) $\frac{\partial f}{\partial p} V$
-  - [`NonLinearOpSensAdjoint`](https://docs.rs/diffsol/latest/diffsol/op/nonlinear_op/trait.NonLinearOpSensAdjoint.html) $\frac{\partial f}{\partial p}^T V$
+  - [`NonLinearOpJacobian`](https://docs.rs/diffsol/latest/diffsol/op/nonlinear_op/trait.NonLinearOpJacobian.html) for the Jacobian-vector product $\frac{\partial f}{\partial x} v$
+  - [`NonLinearOpSens`](https://docs.rs/diffsol/latest/diffsol/op/nonlinear_op/trait.NonLinearOpSens.html) for the sensitivity-vector product $\frac{\partial f}{\partial p} v$
 - [`LinearOp`](https://docs.rs/diffsol/latest/diffsol/op/linear_op/trait.LinearOp.html) for a linear operation wrt $x$ (e.g. $Ax + b$)
 - [`ConstantOp`](https://docs.rs/diffsol/latest/diffsol/op/constant_op/trait.ConstantOp.html) for a constant operation wrt $x$ (e.g. $b$)
 
 Solver traits:
 
 - [`LinearSolver`](https://docs.rs/diffsol/latest/diffsol/linear_solver/trait.LinearSolver.html) for solving linear systems $Ax = b$
+  - implementations for `faer` dense and sparse LU, `nalgebra` dense LU, and `suitesparse` KLU.
 - [`NonLinearSolver`](https://docs.rs/diffsol/latest/diffsol/nonlinear_solver/trait.NonLinearSolver.html) for solving non-linear systems $f(x, t) = 0$
-- Diffsol provides implementations for `faer` dense and sparse LU, `nalgebra` dense LU, and `suitesparse` KLU solvers.
+  - one implementation for a Newton iteration method
 
 ---
 level: 3
@@ -352,15 +351,13 @@ where
     fn state(&self) -> StateRef<'_, Eqn::V>;
     fn state_mut(&mut self) -> StateRefMut<'_, Eqn::V>;
     fn step(&mut self) -> Result<OdeSolverStopReason<Eqn::T>, DiffsolError>;
-    fn set_stop_time(&mut self, tstop: Eqn::T) -> Result<(), DiffsolError>;
     fn interpolate(&self, t: Eqn::T) -> Result<Eqn::V, DiffsolError>;
     //...
 
     // An example provided method...
     fn solve(&mut self, final_time: Eqn::T,
     ) -> Result<(<Eqn::V as DefaultDenseMatrix>::M, Vec<Eqn::T>), DiffsolError>
-       where Eqn::V: DefaultDenseMatrix,
-             Self: Sized { ... }
+       where Eqn::V: DefaultDenseMatrix { ... }
     //...
 }
 ```
@@ -373,16 +370,16 @@ level: 3
 
 ## Advantages
 
-- **Flexibility**: The use of traits allows for easy swapping of different vector, matrix and solver combinations.
-- **Modularity**: Can reuse solvers, matrix operations, equations, etc. across different but related problems.
-- **Performance**: Generic types allow for the above without sacrificing performance.
+- **Flexibility**: the use of traits allows for easy swapping of different vector, matrix and solver combinations.
+- **Modularity**: can reuse solvers, matrix operations, equations, etc. across different but related problems.
+- **Performance**: generic types allow for the above without sacrificing performance.
 
 ## Disadvantages
 
-- **Complexity**: Proliferation of generic types and complex interlocking trait bounds.
-- **Repetition**: Forced to repeat complex trait bounds across multiple impls, lack of default associated types (on its way https://github.com/rust-lang/rust/issues/29661)
-- **GATs with lifetimes**: Difficult to use, see `OdeEquationsRef` and `OdeEquations` traits.
-- **Poor linting**: Rust-analyzer slow to lint code, very large memory usage and requires constant restarts.
+- **Complexity**: proliferation of generic types and complex interlocking trait bounds.
+- **Repetition**: repeating complex trait bounds across multiple impls, no default associated types (on its way https://github.com/rust-lang/rust/issues/29661)
+- **GATs with lifetimes**: difficult to use, see `OdeEquationsRef` and `OdeEquations` traits.
+- **Poor linting**: rust-analyzer slow to lint code, very large memory usage and requires constant restarts.
 
 
 ---
