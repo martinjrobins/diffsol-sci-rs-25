@@ -161,8 +161,7 @@ let problem = diffsol::OdeBuilder::<M>::new()
         u { 0.1 }
         F { r * u * (1.0 - u / k) }
         ",
-    )
-    .unwrap();
+    ).unwrap();
 let mut solver = problem.bdf::<LS>().unwrap();
 let (ys, ts) = solver.solve(40.0).unwrap();
 ```
