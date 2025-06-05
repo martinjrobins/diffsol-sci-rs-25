@@ -233,26 +233,6 @@ block-beta
 level: 3
 ---
 
-# Linear algebra traits
-
-- [`Vector`](https://docs.rs/diffsol/latest/diffsol/vector/trait.Vector.html)
-  - defines vector operations on dense vectors
-  - e.g. construction, addition, element-wise multiplication, AXPY, gather, scatter etc.
-- [`Matrix`](https://docs.rs/diffsol/latest/diffsol/matrix/trait.Matrix.html)
-  - defines matrix operations on dense and sparse matrices 
-  - sparsity pattern as an associated type
-  - e.g. construction, addition, GEMV, etc.
-- [`DenseMatrix`](https://docs.rs/diffsol/latest/diffsol/matrix/trait.DenseMatrix.html)
-  - sub-trait for defining dense matrix operations on column-major matrices
-  - column slicing and mutation
-
-Diffsol provides implementations for vectors, sparse and dense matrices using the `nalgebra` and `faer` crates.
-
-
----
-level: 3
----
-
 # Operator and solver traits 
 
 *Associated types define the vector/matrix types they operate on...*
