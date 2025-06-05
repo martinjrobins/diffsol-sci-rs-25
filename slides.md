@@ -357,7 +357,6 @@ level: 3
 
 - **Complexity**: proliferation of generic types and complex interlocking trait bounds.
 - **Repetition**: repeating complex trait bounds across multiple impls, no default associated types (on its way https://github.com/rust-lang/rust/issues/29661)
-- **GATs with lifetimes**: difficult to use, see `OdeEquationsRef` and `OdeEquations` traits.
 - **Poor linting**: rust-analyzer slow to lint code, very large memory usage and requires constant restarts.
 
 
