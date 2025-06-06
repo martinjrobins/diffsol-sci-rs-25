@@ -140,8 +140,8 @@ level: 3
 
 $$
 \begin{align*}
-\frac{dr}{dt} &= r \cdot u \cdot \left(1 - \frac{u}{k}\right) \\
-u(0) &= 0.1 \\
+\frac{dy}{dt} &= r \cdot y \cdot \left(1 - \frac{y}{k}\right) \\
+y(0) &= 0.1 \\
 \end{align*}
 $$
 
@@ -174,8 +174,8 @@ level: 4
 
 $$
 \begin{align*}
-\frac{dr}{dt} &= r \cdot u \cdot \left(1 - \frac{u}{k}\right) \\
-u(0) &= 0.1 \\
+\frac{dy}{dt} &= r \cdot y \cdot \left(1 - \frac{y}{k}\right) \\
+y(0) &= 0.1 \\
 \end{align*}
 $$
 
